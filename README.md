@@ -9,6 +9,10 @@ A Python-based web scraper that uses a tiered approach to scrape websites with d
 2. **Tier 2: Playwright SPA** - If Tier 1 fails, use Playwright to handle Single Page Applications
 3. **Tier 3: Visual AI** - Placeholder for future implementation using computer vision and OCR
 
+### Target Website
+
+This scraper is designed to scrape data from https://app.yshelper.com/#/pages/rank2/rank2, which appears to be a Single Page Application (SPA). The scraper will automatically try different approaches until it successfully extracts the data.
+
 ### Installation
 
 1. Install Python dependencies:
@@ -23,6 +27,8 @@ playwright install chromium
 
 ### Usage
 
+#### Basic Usage
+
 Run the scraper with the default URL (https://app.yshelper.com/#/pages/rank2/rank2):
 ```bash
 python scraper.py
@@ -32,6 +38,24 @@ Or specify a custom URL:
 ```bash
 python scraper.py "https://example.com"
 ```
+
+#### Example Usage for Target Website
+
+Use the provided example script:
+```bash
+python example_usage.py
+```
+
+This will scrape the yshelper.com rank page and save the data to the `scraped_data/` directory.
+
+#### Demo Mode
+
+To test the scraper functionality with a local test file:
+```bash
+python demo.py
+```
+
+This demonstrates all tiers of scraping and verifies the installation is working correctly.
 
 ### Output
 
@@ -65,4 +89,38 @@ The scraper saves data in two formats in the `scraped_data/` directory:
   "text": "Page content...",
   "scraped_at": "2024-01-01T12:00:00"
 }
+```
+
+### Troubleshooting
+
+**Tier 1 fails (DNS/Connection errors)**
+- The website may not be accessible from your network
+- Check if you can access the website in a browser
+- Try using Tier 2 which might handle redirects better
+
+**Tier 2 fails (Playwright not installed)**
+```bash
+pip install playwright
+playwright install chromium
+```
+
+**All tiers fail**
+- Verify the website is accessible
+- Check if the website requires authentication
+- The website may have anti-scraping measures
+- Try adjusting the wait times in the Playwright section of the code
+
+### Project Structure
+
+```
+.
+├── scraper.py          # Main scraper with tiered approach
+├── example_usage.py    # Example for scraping the target website
+├── demo.py            # Demo script to test functionality
+├── requirements.txt   # Python dependencies
+├── README.md          # This file
+├── .gitignore         # Git ignore file
+└── scraped_data/      # Output directory (created automatically)
+    ├── *.txt          # Text format output
+    └── *.json         # JSON format output
 ```
