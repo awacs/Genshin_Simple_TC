@@ -58,6 +58,8 @@ class WebScraper:
         
         # Check if the data contains the expected keywords
         # At least 3 out of 5 keywords should be present for valid data
+        # This threshold allows for some flexibility in case the page layout varies
+        # while still ensuring we have actual rank data, not an error page
         keyword_count = sum(1 for keyword in self.REQUIRED_KEYWORDS if keyword.lower() in text_content)
         
         if keyword_count >= 3:
@@ -169,8 +171,6 @@ class WebScraper:
                     if (window.appData) return window.appData;
                     return null;
                 }""")
-                
-                browser.close()
                 
                 data = {
                     'url': self.url,
