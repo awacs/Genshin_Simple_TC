@@ -24,6 +24,11 @@ class WebScraper:
     DEFAULT_WAIT_TIMEOUT = 3000  # milliseconds
     PLAYWRIGHT_WAIT_UNTIL = 'networkidle'  # Options: 'load', 'domcontentloaded', 'networkidle'
     
+    # Keywords that should be present in valid YShelper rank data
+    REQUIRED_KEYWORDS = ['rank', 'team comp', 'use rate', 'own rate', 'room ratio']
+    # Bad indicators that suggest the data is not valid
+    BAD_INDICATORS = ['Please enable JavaScript', 'JavaScript to continue']
+    
     def __init__(self, url: str, output_dir: str = "scraped_data", 
                  wait_timeout: int = None, wait_until: str = None):
         self.url = url
@@ -32,6 +37,34 @@ class WebScraper:
         self.data = None
         self.wait_timeout = wait_timeout or self.DEFAULT_WAIT_TIMEOUT
         self.wait_until = wait_until or self.PLAYWRIGHT_WAIT_UNTIL
+    
+    def _is_data_valid(self, data: Dict[str, Any]) -> bool:
+        """
+        Validate if the scraped data contains expected content.
+        Returns: True if data is valid, False otherwise
+        """
+        if not data:
+            return False
+        
+        # Get the text content to validate
+        text_content = data.get('text', '').lower()
+        
+        # Check for bad indicators first (like "Please enable JavaScript")
+        for bad_indicator in self.BAD_INDICATORS:
+            if bad_indicator.lower() in text_content:
+                print(f"[Validation] Data contains bad indicator: '{bad_indicator}'")
+                return False
+        
+        # Check if the data contains the expected keywords
+        # At least 3 out of 5 keywords should be present for valid data
+        keyword_count = sum(1 for keyword in self.REQUIRED_KEYWORDS if keyword.lower() in text_content)
+        
+        if keyword_count >= 3:
+            print(f"[Validation] Data is valid ({keyword_count}/{len(self.REQUIRED_KEYWORDS)} keywords found)")
+            return True
+        else:
+            print(f"[Validation] Data is invalid (only {keyword_count}/{len(self.REQUIRED_KEYWORDS)} keywords found)")
+            return False
         
     def tier1_api_html_json(self) -> Optional[Dict[str, Any]]:
         """
@@ -87,6 +120,12 @@ class WebScraper:
             }
             
             print(f"[Tier 1] Scraped HTML content ({len(data['text'])} characters)")
+            
+            # Validate the data before returning
+            if not self._is_data_valid(data):
+                print(f"[Tier 1] Data validation failed")
+                return None
+            
             return data
             
         except Exception as e:
@@ -141,7 +180,15 @@ class WebScraper:
                     'scraped_at': datetime.now().isoformat()
                 }
                 
+                browser.close()
+                
                 print(f"[Tier 2] Successfully scraped SPA ({len(text_content)} characters)")
+                
+                # Validate the data before returning
+                if not self._is_data_valid(data):
+                    print(f"[Tier 2] Data validation failed")
+                    return None
+                
                 return data
                 
         except ImportError:
