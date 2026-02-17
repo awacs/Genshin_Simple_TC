@@ -75,9 +75,9 @@ class WebScraper:
         noscript_tags = soup.find_all('noscript')
         if noscript_tags:
             noscript_text = ' '.join(tag.get_text(strip=True) for tag in noscript_tags)
-            # If noscript content is a significant portion of total content, likely an SPA
-            if len(noscript_text) > len(text_content) * 0.5:
-                print(f"[Tier 1] SPA shell detected: Large noscript content suggests JS requirement")
+            # If noscript has substantial content (> 50 chars), likely an SPA requiring JS
+            if len(noscript_text) > 50:
+                print(f"[Tier 1] SPA shell detected: Substantial noscript content ({len(noscript_text)} chars) suggests JS requirement")
                 return True
         
         return False

@@ -4,6 +4,7 @@ Tests for the web scraper SPA shell detection
 """
 
 import unittest
+import tempfile
 from unittest.mock import Mock, patch, MagicMock
 from bs4 import BeautifulSoup
 from scraper import WebScraper
@@ -14,7 +15,9 @@ class TestSPAShellDetection(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.scraper = WebScraper("https://example.com", output_dir="/tmp/test_output")
+        # Use cross-platform temporary directory
+        temp_dir = tempfile.gettempdir()
+        self.scraper = WebScraper("https://example.com", output_dir=temp_dir)
     
     def test_detect_enable_javascript_message(self):
         """Test detection of 'please enable javascript' message"""
