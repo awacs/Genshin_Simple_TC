@@ -24,6 +24,20 @@ class WebScraper:
     DEFAULT_WAIT_TIMEOUT = 3000  # milliseconds
     PLAYWRIGHT_WAIT_UNTIL = 'networkidle'  # Options: 'load', 'domcontentloaded', 'networkidle'
     
+    # SPA shell detection indicators
+    SPA_SHELL_INDICATORS = [
+        'please enable javascript',
+        'javascript is disabled',
+        'javascript is required',
+        'enable javascript',
+        'require javascript',
+        'javascript off',
+        'turn on javascript',
+        'javascript must be enabled',
+        'please turn on javascript',
+    ]
+    MIN_CONTENT_LENGTH = 200  # Minimum text length to consider as valid content
+    
     def __init__(self, url: str, output_dir: str = "scraped_data", 
                  wait_timeout: int = None, wait_until: str = None):
         self.url = url
@@ -32,6 +46,41 @@ class WebScraper:
         self.data = None
         self.wait_timeout = wait_timeout or self.DEFAULT_WAIT_TIMEOUT
         self.wait_until = wait_until or self.PLAYWRIGHT_WAIT_UNTIL
+    
+    def _is_spa_shell(self, soup: BeautifulSoup, text_content: str) -> bool:
+        """
+        Detect if the HTML response is just an SPA shell without real content.
+        
+        Args:
+            soup: BeautifulSoup object of the HTML
+            text_content: Extracted text content from the HTML
+            
+        Returns:
+            True if this appears to be an SPA shell, False otherwise
+        """
+        text_lower = text_content.lower()
+        
+        # Check for common "enable javascript" messages
+        for indicator in self.SPA_SHELL_INDICATORS:
+            if indicator in text_lower:
+                print(f"[Tier 1] SPA shell detected: Found indicator '{indicator}'")
+                return True
+        
+        # Check if content is too short (likely just a shell)
+        if len(text_content.strip()) < self.MIN_CONTENT_LENGTH:
+            print(f"[Tier 1] SPA shell detected: Content too short ({len(text_content.strip())} < {self.MIN_CONTENT_LENGTH} chars)")
+            return True
+        
+        # Check for noscript tags with substantial content
+        noscript_tags = soup.find_all('noscript')
+        if noscript_tags:
+            noscript_text = ' '.join(tag.get_text(strip=True) for tag in noscript_tags)
+            # If noscript content is a significant portion of total content, likely an SPA
+            if len(noscript_text) > len(text_content) * 0.5:
+                print(f"[Tier 1] SPA shell detected: Large noscript content suggests JS requirement")
+                return True
+        
+        return False
         
     def tier1_api_html_json(self) -> Optional[Dict[str, Any]]:
         """
@@ -79,10 +128,17 @@ class WebScraper:
                         continue
             
             # Extract text content from HTML
+            text_content = soup.get_text(separator='\n', strip=True)
+            
+            # Check if this is an SPA shell
+            if self._is_spa_shell(soup, text_content):
+                print("[Tier 1] Detected SPA shell - falling back to Tier 2")
+                return None
+            
             data = {
                 'url': self.url,
                 'title': soup.title.string if soup.title else 'No title',
-                'text': soup.get_text(separator='\n', strip=True),
+                'text': text_content,
                 'scraped_at': datetime.now().isoformat()
             }
             
