@@ -20,11 +20,18 @@ from bs4 import BeautifulSoup
 class WebScraper:
     """Main web scraper class with tiered scraping strategies"""
     
-    def __init__(self, url: str, output_dir: str = "scraped_data"):
+    # Configuration constants
+    DEFAULT_WAIT_TIMEOUT = 3000  # milliseconds
+    PLAYWRIGHT_WAIT_UNTIL = 'networkidle'  # Options: 'load', 'domcontentloaded', 'networkidle'
+    
+    def __init__(self, url: str, output_dir: str = "scraped_data", 
+                 wait_timeout: int = None, wait_until: str = None):
         self.url = url
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.data = None
+        self.wait_timeout = wait_timeout or self.DEFAULT_WAIT_TIMEOUT
+        self.wait_until = wait_until or self.PLAYWRIGHT_WAIT_UNTIL
         
     def tier1_api_html_json(self) -> Optional[Dict[str, Any]]:
         """
@@ -102,10 +109,10 @@ class WebScraper:
                 
                 # Navigate to the page
                 print(f"[Tier 2] Loading page...")
-                page.goto(self.url, wait_until='networkidle', timeout=30000)
+                page.goto(self.url, wait_until=self.wait_until, timeout=30000)
                 
                 # Wait for content to load (adjust selector as needed)
-                page.wait_for_timeout(3000)  # Wait 3 seconds for dynamic content
+                page.wait_for_timeout(self.wait_timeout)
                 
                 # Get page content
                 content = page.content()
