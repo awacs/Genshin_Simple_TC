@@ -96,6 +96,7 @@ class WebScraper:
     def tier2_playwright_spa(self) -> Optional[Dict[str, Any]]:
         """
         Tier 2: Use Playwright for SPA (Single Page Application) scraping
+        Uses JavaScript execution to extract data from dynamically rendered content
         Returns: Data dictionary if successful, None otherwise
         """
         print(f"[Tier 2] Attempting Playwright SPA scraping for {self.url}")
@@ -108,11 +109,19 @@ class WebScraper:
                 page = browser.new_page()
                 
                 # Navigate to the page
-                print(f"[Tier 2] Loading page...")
+                print(f"[Tier 2] Loading page with JavaScript enabled...")
                 page.goto(self.url, wait_until=self.wait_until, timeout=30000)
                 
-                # Wait for content to load (adjust selector as needed)
+                # Wait for content to load
+                print(f"[Tier 2] Waiting for JavaScript to render content...")
                 page.wait_for_timeout(self.wait_timeout)
+                
+                # Additional wait for any tables or lists that might contain rank data
+                try:
+                    page.wait_for_selector('table, .table, [class*="rank"], [class*="list"]', timeout=5000)
+                    print(f"[Tier 2] Found data container elements")
+                except:
+                    print(f"[Tier 2] No specific data containers found, using full page content")
                 
                 # Get page content
                 content = page.content()
@@ -121,13 +130,46 @@ class WebScraper:
                 # Get text content
                 text_content = page.inner_text('body')
                 
-                # Try to get any JSON data from the page
+                # Use JavaScript to extract data from various sources
                 json_data = page.evaluate("""() => {
+                    const data = {};
+                    
                     // Try to find data in window object
-                    if (window.__INITIAL_STATE__) return window.__INITIAL_STATE__;
-                    if (window.__data) return window.__data;
-                    if (window.appData) return window.appData;
-                    return null;
+                    if (window.__INITIAL_STATE__) data.initialState = window.__INITIAL_STATE__;
+                    if (window.__data) data.windowData = window.__data;
+                    if (window.appData) data.appData = window.appData;
+                    
+                    // Try to find Vue.js data
+                    if (window.__NUXT__) data.nuxtData = window.__NUXT__;
+                    if (window.$nuxt) {
+                        try {
+                            data.nuxtState = window.$nuxt.$store?.state;
+                        } catch (e) {}
+                    }
+                    
+                    // Try to find React data
+                    const reactRoot = document.querySelector('[data-reactroot], #root, #app');
+                    if (reactRoot) {
+                        const reactProps = Object.keys(reactRoot).find(key => key.startsWith('__react'));
+                        if (reactProps) {
+                            try {
+                                data.reactData = 'React app detected';
+                            } catch (e) {}
+                        }
+                    }
+                    
+                    // Extract any data attributes from the DOM
+                    const dataElements = document.querySelectorAll('[data-rank], [data-ratio], [data-info]');
+                    if (dataElements.length > 0) {
+                        data.domData = Array.from(dataElements).map(el => ({
+                            rank: el.dataset.rank,
+                            ratio: el.dataset.ratio,
+                            info: el.dataset.info,
+                            text: el.innerText?.trim()
+                        }));
+                    }
+                    
+                    return Object.keys(data).length > 0 ? data : null;
                 }""")
                 
                 browser.close()
@@ -146,6 +188,8 @@ class WebScraper:
                 has_ratio_pattern = bool(__import__('re').search(r'\d+:\d+:\d+', text_content))
                 
                 print(f"[Tier 2] Successfully scraped SPA ({len(text_content)} characters)")
+                if json_data:
+                    print(f"[Tier 2] Extracted JSON data from JavaScript: {list(json_data.keys())}")
                 if has_rank_keyword or has_ratio_pattern:
                     print(f"[Tier 2] Sanity check: Found expected data patterns (Rank: {has_rank_keyword}, Ratio: {has_ratio_pattern})")
                 
