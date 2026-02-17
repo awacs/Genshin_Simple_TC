@@ -23,9 +23,9 @@ def create_test_html():
         <script>
             window.__INITIAL_STATE__ = {
                 "ranks": [
-                    {"rank": 1, "name": "Player A", "score": 9500},
-                    {"rank": 2, "name": "Player B", "score": 9200},
-                    {"rank": 3, "name": "Player C", "score": 8900}
+                    {"rank": 1, "teamComp": "Neuvillette/Furina/Kazuha/Baizhu", "useRate": 95.5, "ownRate": 88.2, "roomRatio": "100:0:0"},
+                    {"rank": 2, "teamComp": "Hu Tao/Yelan/Xingqiu/Zhongli", "useRate": 89.3, "ownRate": 82.1, "roomRatio": "98:2:0"},
+                    {"rank": 3, "teamComp": "Alhaitham/Nahida/Fischl/Kuki Shinobu", "useRate": 76.8, "ownRate": 71.4, "roomRatio": "85:12:3"}
                 ],
                 "updated": "2024-01-01"
             };
@@ -34,9 +34,9 @@ def create_test_html():
     <body>
         <h1>Rank Data</h1>
         <div class="rank-list">
-            <div>Rank 1: Player A - 9500 points</div>
-            <div>Rank 2: Player B - 9200 points</div>
-            <div>Rank 3: Player C - 8900 points</div>
+            <div>Rank 1: Neuvillette/Furina/Kazuha/Baizhu - Use Rate: 95.5% - Room Ratio: 100:0:0</div>
+            <div>Rank 2: Hu Tao/Yelan/Xingqiu/Zhongli - Use Rate: 89.3% - Room Ratio: 98:2:0</div>
+            <div>Rank 3: Alhaitham/Nahida/Fischl/Kuki Shinobu - Use Rate: 76.8% - Room Ratio: 85:12:3</div>
         </div>
     </body>
     </html>

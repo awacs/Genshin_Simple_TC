@@ -41,12 +41,13 @@ class WebScraper:
     def _is_data_valid(self, data: Dict[str, Any]) -> bool:
         """
         Validate if the scraped data contains expected content.
+        Performs case-insensitive matching for keywords and bad indicators.
         Returns: True if data is valid, False otherwise
         """
         if not data:
             return False
         
-        # Get the text content to validate
+        # Get the text content to validate (convert to lowercase for case-insensitive matching)
         text_content = data.get('text', '').lower()
         
         # Check for bad indicators first (like "Please enable JavaScript")
