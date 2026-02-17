@@ -48,15 +48,6 @@ python example_usage.py
 
 This will scrape the yshelper.com rank page and save the data to the `scraped_data/` directory.
 
-#### Demo Mode
-
-To test the scraper functionality with a local test file:
-```bash
-python demo.py
-```
-
-This demonstrates all tiers of scraping and verifies the installation is working correctly.
-
 ### Output
 
 The scraper saves data in two formats in the `scraped_data/` directory:
@@ -116,11 +107,10 @@ playwright install chromium
 .
 ├── scraper.py          # Main scraper with tiered approach
 ├── example_usage.py    # Example for scraping the target website
-├── demo.py            # Demo script to test functionality
-├── requirements.txt   # Python dependencies
-├── README.md          # This file
-├── .gitignore         # Git ignore file
-└── scraped_data/      # Output directory (created automatically)
-    ├── *.txt          # Text format output
-    └── *.json         # JSON format output
+├── requirements.txt    # Python dependencies
+├── README.md           # This file
+├── .gitignore          # Git ignore file
+└── scraped_data/       # Output directory (created automatically)
+    ├── *.txt           # Text format output
+    └── *.json          # JSON format output
 ```

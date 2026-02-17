@@ -141,7 +141,14 @@ class WebScraper:
                     'scraped_at': datetime.now().isoformat()
                 }
                 
+                # Sanity check: look for expected patterns like "Rank" and ratio patterns (X:Y:Z)
+                has_rank_keyword = 'rank' in text_content.lower()
+                has_ratio_pattern = bool(__import__('re').search(r'\d+:\d+:\d+', text_content))
+                
                 print(f"[Tier 2] Successfully scraped SPA ({len(text_content)} characters)")
+                if has_rank_keyword or has_ratio_pattern:
+                    print(f"[Tier 2] Sanity check: Found expected data patterns (Rank: {has_rank_keyword}, Ratio: {has_ratio_pattern})")
+                
                 return data
                 
         except ImportError:
