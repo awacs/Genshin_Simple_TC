@@ -21,8 +21,9 @@ class WebScraper:
     """Main web scraper class with tiered scraping strategies"""
     
     # Configuration constants
-    DEFAULT_WAIT_TIMEOUT = 3000  # milliseconds
+    DEFAULT_WAIT_TIMEOUT = 5000  # milliseconds - increased for SPA rendering
     PLAYWRIGHT_WAIT_UNTIL = 'networkidle'  # Options: 'load', 'domcontentloaded', 'networkidle'
+    MAX_CONTENT_WAIT_RETRIES = 3  # Number of times to retry waiting for content
     
     def __init__(self, url: str, output_dir: str = "scraped_data", 
                  wait_timeout: int = None, wait_until: str = None):
@@ -112,16 +113,46 @@ class WebScraper:
                 print(f"[Tier 2] Loading page with JavaScript enabled...")
                 page.goto(self.url, wait_until=self.wait_until, timeout=30000)
                 
-                # Wait for content to load
+                # Wait for content to load with retry logic
                 print(f"[Tier 2] Waiting for JavaScript to render content...")
-                page.wait_for_timeout(self.wait_timeout)
+                content_loaded = False
+                for retry in range(self.MAX_CONTENT_WAIT_RETRIES):
+                    page.wait_for_timeout(self.wait_timeout)
+                    
+                    # Check for "Please enable JavaScript" message - indicates failure
+                    text_preview = page.inner_text('body')
+                    
+                    # If we see the JavaScript warning and very little content, page hasn't loaded
+                    if 'please enable javascript' in text_preview.lower() and len(text_preview.strip()) < 200:
+                        print(f"[Tier 2] Retry {retry + 1}/{self.MAX_CONTENT_WAIT_RETRIES}: Still seeing 'Please enable JavaScript' message")
+                        if retry < self.MAX_CONTENT_WAIT_RETRIES - 1:
+                            print(f"[Tier 2] Waiting longer for content to render...")
+                            continue
+                        else:
+                            print(f"[Tier 2] FAILURE: Page shows 'Please enable JavaScript' message after all retries")
+                            print(f"[Tier 2] Page content: {text_preview[:200]}")
+                            browser.close()
+                            return None
+                    else:
+                        # Content seems to have loaded
+                        content_loaded = True
+                        print(f"[Tier 2] Content appears to have loaded ({len(text_preview)} characters)")
+                        break
+                
+                if not content_loaded:
+                    browser.close()
+                    return None
                 
                 # Additional wait for any tables or lists that might contain rank data
+                # This is important for YShelper which likely uses tables for rank display
                 try:
-                    page.wait_for_selector('table, .table, [class*="rank"], [class*="list"]', timeout=5000)
-                    print(f"[Tier 2] Found data container elements")
+                    page.wait_for_selector('table, .table, [class*="rank"], [class*="list"], tbody tr', timeout=10000)
+                    print(f"[Tier 2] Found data container elements (table/list)")
                 except:
-                    print(f"[Tier 2] No specific data containers found, using full page content")
+                    print(f"[Tier 2] Warning: No specific data containers found, proceeding with available content")
+                
+                # Wait a bit more to ensure any animations/lazy loading completes
+                page.wait_for_timeout(2000)
                 
                 # Get page content
                 content = page.content()
@@ -169,6 +200,30 @@ class WebScraper:
                         }));
                     }
                     
+                    // Extract table data if present (for rank tables)
+                    const tables = document.querySelectorAll('table');
+                    if (tables.length > 0) {
+                        data.tables = Array.from(tables).map(table => {
+                            const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
+                            const rows = Array.from(table.querySelectorAll('tbody tr')).map(row => {
+                                const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
+                                const rowData = {
+                                    cells: cells,
+                                    rank: row.dataset.rank || null,
+                                    ratio: row.dataset.ratio || null
+                                };
+                                return rowData;
+                            });
+                            return { headers, rows };
+                        });
+                    }
+                    
+                    // Look for room ratio patterns in the DOM
+                    const ratioElements = document.querySelectorAll('.room-ratio, [class*="ratio"]');
+                    if (ratioElements.length > 0) {
+                        data.ratios = Array.from(ratioElements).map(el => el.innerText.trim());
+                    }
+                    
                     return Object.keys(data).length > 0 ? data : null;
                 }""")
                 
@@ -190,8 +245,25 @@ class WebScraper:
                 print(f"[Tier 2] Successfully scraped SPA ({len(text_content)} characters)")
                 if json_data:
                     print(f"[Tier 2] Extracted JSON data from JavaScript: {list(json_data.keys())}")
+                    # Check if we have rank data in the extracted JSON
+                    if 'domData' in json_data and json_data['domData']:
+                        print(f"[Tier 2] ✓ Found {len(json_data['domData'])} elements with data-rank or data-ratio attributes")
+                    if 'tables' in json_data and json_data['tables']:
+                        print(f"[Tier 2] ✓ Found {len(json_data['tables'])} table(s) with structured data")
+                    if 'ratios' in json_data and json_data['ratios']:
+                        print(f"[Tier 2] ✓ Found {len(json_data['ratios'])} room ratio elements")
+                    if 'initialState' in json_data:
+                        print(f"[Tier 2] ✓ Found window.__INITIAL_STATE__ data")
+                
+                # Report on expected data patterns
                 if has_rank_keyword or has_ratio_pattern:
-                    print(f"[Tier 2] Sanity check: Found expected data patterns (Rank: {has_rank_keyword}, Ratio: {has_ratio_pattern})")
+                    print(f"[Tier 2] Data validation:")
+                    print(f"[Tier 2]   - 'Rank' keyword found: {'✓ YES' if has_rank_keyword else '✗ NO'}")
+                    print(f"[Tier 2]   - Room ratio pattern (X:Y:Z) found: {'✓ YES' if has_ratio_pattern else '✗ NO'}")
+                else:
+                    print(f"[Tier 2] ⚠ WARNING: Expected data patterns NOT found!")
+                    print(f"[Tier 2]   - 'Rank' keyword: {'✓' if has_rank_keyword else '✗'}")
+                    print(f"[Tier 2]   - Room ratio pattern: {'✓' if has_ratio_pattern else '✗'}")
                 
                 return data
                 
