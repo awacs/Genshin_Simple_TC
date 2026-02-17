@@ -57,6 +57,18 @@ python demo.py
 
 This demonstrates all tiers of scraping and verifies the installation is working correctly.
 
+#### Test Suite
+
+To run the validation test suite:
+```bash
+python test_validation.py
+```
+
+This tests:
+- Case-insensitive keyword matching (lowercase, Mixed Case, UPPERCASE)
+- Rejection of "Please enable JavaScript" messages
+- Proper fallback from Tier 1 to Tier 2 for SPAs
+
 ### Output
 
 The scraper saves data in two formats in the `scraped_data/` directory:
@@ -70,15 +82,35 @@ The scraper saves data in two formats in the `scraped_data/` directory:
    - Checks if response is JSON
    - Parses HTML and looks for embedded JSON in script tags
    - Extracts text content from HTML
+   - **Validates the scraped data** to ensure it contains expected content
 
 2. If Tier 1 fails, it tries Tier 2 (Playwright SPA)
    - Launches a headless browser
    - Waits for page to load including dynamic content
    - Extracts text and looks for JavaScript data objects
    - Saves both text and HTML content
+   - **Validates the scraped data** to ensure it contains expected content
 
 3. If Tier 2 fails, it would try Tier 3 (not yet implemented)
    - Would use computer vision and OCR for visual scraping
+
+### Data Validation
+
+The scraper includes intelligent validation to ensure the scraped data is actually useful:
+
+**Rejection Criteria:**
+- Rejects pages with "Please enable JavaScript to continue" messages
+- Rejects pages that don't contain expected data fields
+
+**Acceptance Criteria:**
+- Must contain at least 3 out of 5 expected keywords:
+  - "rank" (case-insensitive: rank, Rank, RANK)
+  - "team comp" (case-insensitive: team comp, Team Comp, TEAM COMP)
+  - "use rate" (case-insensitive)
+  - "own rate" (case-insensitive)
+  - "room ratio" (case-insensitive)
+
+This validation ensures that the scraper automatically falls back from Tier 1 to Tier 2 when encountering Single Page Applications that require JavaScript execution.
 
 ### Example Output Structure
 
